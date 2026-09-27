@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>AI CSV Analyzer</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f7fb;
+            color: #1f2937;
+        }
+
+        header {
+            background: #111827;
+            color: white;
+            padding: 25px;
+            text-align: center;
+        }
+
+        header h1 {
+            margin-bottom: 8px;
+        }
+
+        .container {
+            width: 92%;
+            max-width: 1200px;
+            margin: 30px auto;
+        }
+
+        .upload-box {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 3px 12px rgba(0,0,0,0.08);
+        }
+
+        input[type="file"] {
+            margin: 20px 0;
+        }
+
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 11px 22px;
+            border-radius: 7px;
+            cursor: pointer;
+            font-size: 15px;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        #status {
+            margin-top: 15px;
+        }
+
+        .dashboard {
+            display: none;
+            margin-top: 30px;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.07);
+        }
+
+        .card h3 {
+            font-size: 14px;
+            color: #6b7280;
+            margin-bottom: 10px;
+        }
+
+        .card p {
+            font-size: 25px;
+            font-weight: bold;
+        }
+
+        section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 25px;
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.07);
+        }
+
+        section h2 {
+            margin-bottom: 18px;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+
+        th, td {
+            padding: 10px;
+            border-bottom: 1px solid #e5e7eb;
+            text-align: left;
+        }
+
+        th {
+            background: #f3f4f6;
+        }
+
+        .charts {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .chart-box {
+            min-height: 350px;
+        }
+
+        .column-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .tag {
+            background: #e5e7eb;
+            padding: 7px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+        }
+
+        @media (max-width: 800px) {
+            .cards,
+            .charts {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 550px) {
+            .cards,
+            .charts {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <h1>AI CSV Analyzer</h1>
+    <p>Upload any CSV and understand your dataset instantly.</p>
+</header>
+
+<div class="container">
+
+    <div class="upload-box">
+
+        <h2>Upload CSV Dataset</h2>
+
+        <input
+            type="file"
+            id="fileInput"
+            accept=".csv"
+        >
+
+        <br>
+
+        <button onclick="uploadCSV()">
+            Analyze Dataset
+        </button>
+
+        <p id="status"></p>
+
+    </div>
+
+
+    <div class="dashboard" id="dashboard">
+
+        <!-- Overview -->
+
+        <div class="cards">
+
+            <div class="card">
+                <h3>Rows</h3>
+                <p id="rows">0</p>
+            </div>
+
+            <div class="card">
+                <h3>Columns</h3>
+                <p id="columns">0</p>
+            </div>
+
+            <div class="card">
+                <h3>Numeric Columns</h3>
+                <p id="numeric">0</p>
+            </div>
+
+            <div class="card">
+                <h3>Categorical Columns</h3>
+                <p id="categorical">0</p>
+            </div>
+
+        </div>
+
+
+        <!-- Dataset Info -->
+
+        <section>
+
+            <h2>Dataset Information</h2>
+
+            <p>
+                <strong>File:</strong>
+                <span id="filename"></span>
+            </p>
+
+            <br>
+
+            <p>
+                <strong>Duplicate Rows:</strong>
+                <span id="duplicates"></span>
+            </p>
+
+        </section>
+
+
+        <!-- Column Summary -->
+
+        <section>
+
+            <h2>Column Summary</h2>
+
+            <div class="table-container">
+
+                <table>
+
+                    <thead>
+                        <tr>
+                            <th>Column</th>
+                            <th>Type</th>
+                            <th>Missing</th>
+                            <th>Missing %</th>
+                            <th>Unique</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="columnSummary"></tbody>
+
+                </table>
+
+            </div>
+
+        </section>
+
+
+        <!-- Dataset Preview -->
+
+        <section>
+
+            <h2>Dataset Preview</h2>
+
+            <div class="table-container">
+
+                <table>
+
+                    <thead id="previewHead"></thead>
+
+                    <tbody id="previewBody"></tbody>
+
+                </table>
+
+            </div>
+
+        </section>
+
+
+        <!-- Charts -->
+
+        <section>
+
+            <h2>Visual Analysis</h2>
+
+            <div class="charts">
+
+                <div class="chart-box">
+                    <canvas id="missingChart"></canvas>
+                </div>
+
+                <div class="chart-box">
+                    <canvas id="outlierChart"></canvas>
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- Histograms -->
+
+        <section>
+
+            <h2>Numeric Distributions</h2>
+
+            <div id="histograms" class="charts"></div>
+
+        </section>
+
+
+        <!-- Correlation -->
+
+        <section>
+
+            <h2>Correlation Matrix</h2>
+
+            <div class="table-container">
+
+                <table id="correlationTable"></table>
+
+            </div>
+
+        </section>
+
+    </div>
+
+</div>
+
+
+<script>
+
+let charts = [];
+
+
+async function uploadCSV() {
+
+    const input = document.getElementById("fileInput");
+    const status = document.getElementById("status");
+
+    if (!input.files.length) {
+        status.textContent = "Please select a CSV file.";
+        return;
+    }
+
+    const file = input.files[0];
+
+    const formData = new FormData();
+
+    formData.append("file", file);
+
+    status.textContent = "Analyzing dataset...";
+
+    try {
+
+        const response = await fetch("/upload", {
+            method: "POST",
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.detail || "Upload failed");
+        }
+
+        renderDashboard(data);
+
+        status.textContent = "Analysis completed.";
+
+    } catch (error) {
+
+        status.textContent = error.message;
+
+    }
+}
+
+
+function renderDashboard(data) {
+
+    document.getElementById("dashboard").style.display = "block";
+
+    document.getElementById("rows").textContent = data.rows;
+    document.getElementById("columns").textContent = data.columns.length;
+
+    document.getElementById("numeric").textContent =
+        data.numeric_columns.length;
+
+    document.getElementById("categorical").textContent =
+        data.categorical_columns.length;
+
+    document.getElementById("filename").textContent =
+        data.filename;
+
+    document.getElementById("duplicates").textContent =
+        data.duplicate_rows;
+
+
+    renderColumnSummary(data.column_summary);
+
+    renderPreview(data.preview);
+
+    renderMissingChart(data.missing_values);
+
+    renderOutlierChart(data.outliers);
+
+    renderHistograms(data.histogram_data);
+
+    renderCorrelation(data.correlation);
+}
+
+
+function renderColumnSummary(summary) {
+
+    const body = document.getElementById("columnSummary");
+
+    body.innerHTML = "";
+
+    summary.forEach(column => {
+
+        const row = document.createElement("tr");
+
+        row.innerHTML = `
+            <td>${column.column}</td>
+            <td>${column.dtype}</td>
+            <td>${column.missing}</td>
+            <td>${column.missing_percentage}%</td>
+            <td>${column.unique}</td>
+        `;
+
+        body.appendChild(row);
+
+    });
+}
+
+
+function renderPreview(rows) {
+
+    const head = document.getElementById("previewHead");
+    const body = document.getElementById("previewBody");
+
+    head.innerHTML = "";
+    body.innerHTML = "";
+
+    if (!rows.length) return;
+
+    const columns = Object.keys(rows[0]);
+
+    head.innerHTML = `
+        <tr>
+            ${columns.map(c => `<th>${c}</th>`).join("")}
+        </tr>
+    `;
+
+    rows.forEach(row => {
+
+        const tr = document.createElement("tr");
+
+        tr.innerHTML = columns
+            .map(c => `<td>${row[c] ?? ""}</td>`)
+            .join("");
+
+        body.appendChild(tr);
+
+    });
+}
+
+
+function destroyCharts() {
+
+    charts.forEach(chart => chart.destroy());
+
+    charts = [];
+}
+
+
+function renderMissingChart(values) {
+
+    const labels = Object.keys(values);
+
+    const data = Object.values(values);
+
+    const chart = new Chart(
+        document.getElementById("missingChart"),
+        {
+            type: "bar",
+
+            data: {
+                labels,
+                datasets: [{
+                    label: "Missing Values",
+                    data
+                }]
+            },
+
+            options: {
+                responsive: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: "Missing Values by Column"
+                    }
+                }
+            }
+        }
+    );
+
+    charts.push(chart);
+}
+
+
+function renderOutlierChart(values) {
+
+    const labels = Object.keys(values);
+
+    const data = Object.values(values);
+
+    const chart = new Chart(
+        document.getElementById("outlierChart"),
+        {
+            type: "bar",
+
+            data: {
+                labels,
+                datasets: [{
+                    label: "Outliers",
+                    data
+                }]
+            },
+
+            options: {
+                responsive: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: "Outliers by Column"
+                    }
+                }
+            }
+        }
+    );
+
+    charts.push(chart);
+}
+
+
+function renderHistograms(histograms) {
+
+    const container = document.getElementById("histograms");
+
+    container.innerHTML = "";
+
+    Object.entries(histograms).forEach(
+        ([column, values], index) => {
+
+            const box = document.createElement("div");
+
+            box.className = "chart-box";
+
+            const canvas = document.createElement("canvas");
+
+            box.appendChild(canvas);
+
+            container.appendChild(box);
+
+            const labels = values.bins
+                .slice(0, -1)
+                .map(
+                    (bin, i) =>
+                    `${bin} - ${values.bins[i + 1]}`
+                );
+
+            const chart = new Chart(canvas, {
+
+                type: "bar",
+
+                data: {
+                    labels,
+                    datasets: [{
+                        label: column,
+                        data: values.counts
+                    }]
+                },
+
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: column
+                        }
+                    }
+                }
+
+            });
+
+            charts.push(chart);
+
+        }
+    );
+}
+
+
+function renderCorrelation(correlation) {
+
+    const table = document.getElementById("correlationTable");
+
+    table.innerHTML = "";
+
+    const columns = Object.keys(correlation);
+
+    if (!columns.length) {
+
+        table.innerHTML =
+            "<tr><td>No numeric correlation available.</td></tr>";
+
+        return;
+    }
+
+    const header = `
+        <thead>
+            <tr>
+                <th></th>
+                ${columns.map(c => `<th>${c}</th>`).join("")}
+            </tr>
+        </thead>
+    `;
+
+    const body = columns.map(row => {
+
+        return `
+            <tr>
+                <th>${row}</th>
+
+                ${columns.map(col => `
+                    <td>${correlation[row][col] ?? "-"}</td>
+                `).join("")}
+
+            </tr>
+        `;
+
+    }).join("");
+
+    table.innerHTML =
+        header + `<tbody>${body}</tbody>`;
+}
+
+</script>
+
+</body>
+</html>
